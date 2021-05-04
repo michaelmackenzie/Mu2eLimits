@@ -206,7 +206,7 @@ void Mu2e_model() {
   hpdf->SetMarkerSize(0.8);
   hpdf->Draw();
   hpdf->SetAxisRange(1.e-20, 10., "Y");
-  hpdf->SetAxisRange(0, 20, "X");
+  hpdf->SetAxisRange(0, 19.9, "X");
   c->SetLogy();
 
   if(comparePDF_) {
@@ -258,4 +258,26 @@ void Mu2e_model() {
   double mu_disc = fc.FindForMedianN(ndisc);
   printf("For a median of %i, minimum R_mue is: %.3e (%.3f mean events)\n",
          ndisc, mu_disc*ses, mu_disc*sig_eff.nom_*scaleLuminosity_);
+
+  sig_mu.val_ = mu_max;
+  TH1D* hUL = model.GeneratePDF(*rnd_);
+  hUL->SetName("hUL");
+
+  sig_mu.val_ = mu_disc;
+  TH1D* hDisc = model.GeneratePDF(*rnd_);
+  hUL->SetName("hDisc");
+
+  hUL->SetLineColor(kBlue);
+  hUL->SetLineWidth(2);
+  hUL->Draw("same");
+
+  hDisc->SetLineColor(kGreen+2);
+  hDisc->SetLineWidth(2);
+  hDisc->Draw("same");
+
+  TLegend* leg = new TLegend();
+  leg->AddEntry(hpdf, "Null PDF");
+  leg->AddEntry(hUL, "Upper limit PDF");
+  leg->AddEntry(hDisc, "Discovery PDF");
+  leg->Draw();
 }
