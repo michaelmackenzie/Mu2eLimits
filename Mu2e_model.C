@@ -31,7 +31,7 @@ void Mu2e_model() {
   const double lumi_frac_unc = 0.1;
   const double signal_acceptance = 0.1114; //see docdb-36491 Table 5
   const double sig_frac_unc = 0.0715; //taken as the average of the momentum scale, but should be two-sided and correlated with DIO
-  const double ses = 1./(scaleLuminosity_*3.77e19*1.59e-3*signal_acceptance); //for signal strength -> R_mue
+  const double ses = 1./(scaleLuminosity_*3.77e19*1.59e-3*0.609); //for signal strength -> R_mue
 
   ///////////////////////////////////////////////////////
   // Initialize model parameters
@@ -245,10 +245,11 @@ void Mu2e_model() {
   int nseen;
   //get the median expected events for the null hypothesis PDF
   nseen = fc.GetMedian(hpdf);
+  cout << "Using a single event sensitivity of: " << ses/signal_acceptance << endl;
   cout << "Performing Feldman-Cousins calculation for median nseen = " << nseen << endl;
   fc.CalculateInterval(nseen, mu_min, mu_max);
   printf("For %i seen, R_mue interval is: %.3e - %.3e (%.3f - %.3f mean events)\n",
-         nseen, mu_min*ses/0.61, mu_max*ses/0.61,
+         nseen, mu_min*ses, mu_max*ses,
          mu_min*sig_eff.nom_*scaleLuminosity_, mu_max*sig_eff.nom_*scaleLuminosity_);
 
   //get median discovery information
@@ -256,5 +257,5 @@ void Mu2e_model() {
   cout << "N(discovery) for NULL model = " << ndisc << endl;
   double mu_disc = fc.FindForMedianN(ndisc);
   printf("For a median of %i, minimum R_mue is: %.3e (%.3f mean events)\n",
-         ndisc, mu_disc*ses/0.61, mu_disc*sig_eff.nom_*scaleLuminosity_);
+         ndisc, mu_disc*ses, mu_disc*sig_eff.nom_*scaleLuminosity_);
 }
