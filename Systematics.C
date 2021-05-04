@@ -1,5 +1,14 @@
-//a variable, knows about its bounds, nominal value, additive (applied first) variables, multiplicative (second), and power (third) variables
 namespace FCSys {
+
+  //////////////////////////////////////////////////////////////
+  //a variable class:
+  //knows about its:
+  // bounds
+  // nominal value
+  // additive (applied first) variables
+  // multiplicative (second) variables
+  // power (third) variables
+  //////////////////////////////////////////////////////////////
   class var_t {
   public:
     var_t(TString name = "Default") : name_(name), min_(-1.), max_(1.), nom_(0.), val_(0.), constant_(false), verbose_(0) {}
@@ -7,20 +16,24 @@ namespace FCSys {
     var_t(TString name, double nom, double min, double max, TString pdf = "Gauss") :
       name_(name), min_(min), max_(max), nom_(nom), val_(nom), pdf_(pdf), constant_(false), verbose_(0) {}
 
+    //To ignore calls to set_rnd_val, remains constant
     void set_constant(bool constant = true) {
       constant_ = constant;
     }
 
+    //initialize the variable's dependence on other variables
     void set_sys(std::vector<var_t*> add, std::vector<var_t*> mul, std::vector<var_t*> pow = {}) {
       add_ = add;
       mul_ = mul;
       pow_ = pow;
     }
 
+    //set the base value of the parameter, before the evaluation of other variables
     void set_val(double val) {
       val_ = std::min(max_, std::max(min_, val));
     }
 
+    //set the base value to a random value following its PDF
     void set_rnd_val(TRandom3& rnd) {
       if(constant_) return;
       if(pdf_ == "Gauss") {
@@ -28,6 +41,7 @@ namespace FCSys {
       }
     }
 
+    //Evaluate the value by taking the base value and applying the dependent variable values
     double get_val() {
       double val = val_;
       if(verbose_ > 2) printf("Variable %s has starting value %.3e\n", name_.Data(), val);
@@ -50,6 +64,7 @@ namespace FCSys {
       return val;
     }
 
+    //print information about the variable
     void print() {
       printf(" %s: %.3e (%.3e) [%.3e - %.3e]", name_.Data(), get_val(), nom_, min_, max_);
       if(add_.size() > 0) {
@@ -79,6 +94,7 @@ namespace FCSys {
       printf("\n");
     }
 
+    //Fields for the variable, all public for convenience
     TString name_;
     double min_;
     double max_;
@@ -92,12 +108,14 @@ namespace FCSys {
     std::vector<var_t*> pow_;
   };
 
+  //////////////////////////////////////////////////////////////
   //class for a Poission PDF with systematics
+  //////////////////////////////////////////////////////////////
   class Poisson_t {
   public:
 
     Poisson_t(TString name, var_t& obs, std::vector<var_t*> mu, std::vector<var_t*> sys = {}) :
-      name_(name), obs_(obs), mu_(mu), sys_(sys), verbose_(0) {}
+      name_(name), obs_(obs), mu_(mu), sys_(sys), verbose_(0), ngen_(1e5) {}
 
     void SetVerbose(int verbose) {
       verbose_ = verbose;
@@ -133,12 +151,16 @@ namespace FCSys {
       return p;
     }
 
-    int RandomSample(TRandom3& rnd) {
-      //first sample the systematics
+    void RandomSys(TRandom3& rnd) {
       for(var_t* var : sys_) {
         var->set_rnd_val(rnd);
         if(verbose_ > 9) {std::cout << __func__ << ":\n"; var->print();}
       }
+    }
+
+    int RandomSample(TRandom3& rnd) {
+      //first sample the systematics
+      RandomSys(rnd);
       //next sample the poisson distribution
       const double mu = GetMean();
       const int n = rnd.Poisson(mu);
@@ -150,9 +172,9 @@ namespace FCSys {
       //sample the nuisance parameters to define a mean, then add a poisson PDF for this
       int nbins = 100;
       TH1D* hpdf = new TH1D("hpdf", "PDF", nbins, 0., (double) nbins);
-      const int nattempts = 1e5;
+      const int nattempts = ngen_;
       for(int attempt = 0; attempt < nattempts; ++attempt) {
-        RandomSample(rnd);
+        RandomSys(rnd);
         const double mu = GetMean();
         for(int n = 0; n < nbins; ++n) {
           hpdf->Fill(n, ROOT::Math::poisson_pdf(n, mu));
@@ -181,12 +203,17 @@ namespace FCSys {
     std::vector<var_t*> mu_;
     std::vector<var_t*> sys_;
     int verbose_;
+    int ngen_;
   };
+
+  //////////////////////////////////////////////////////////////
+  // class to perform Feldman-Cousins limits
+  //////////////////////////////////////////////////////////////
 
   class FCCalculator {
   public:
     FCCalculator(Poisson_t& model, var_t& poi, TRandom3& rnd, double cl = 0.9, int verbose = 0) :
-      model_(model), poi_(poi), rnd_(rnd), cl_(cl), verbose_(verbose) {
+      model_(model), poi_(poi), rnd_(rnd), cl_(cl), verbose_(verbose), res_(1.e-3) {
       double oldval = poi.val_;
       poi.val_ = 0.;
       hNull_ = model.GeneratePDF(rnd);
@@ -213,6 +240,8 @@ namespace FCSys {
       }
       return n;
     }
+
+    //Get the median of the distribution
     int GetMedian(TH1D* hPDF) {
       double p = 0.;
       int n = -1;
@@ -223,11 +252,11 @@ namespace FCSys {
       return n;
     }
 
-    //find the minimum value of the POI that has a median of n
+    //Find the minimum value of the POI that has a median of n
     double FindForMedianN(int n) {
       double mu_max = poi_.max_;
       double mu_min = poi_.min_;
-      while(abs(mu_max - mu_min)/(mu_max+mu_min) > 1.e-4) {
+      while(abs(mu_max - mu_min)/(mu_max+mu_min) > res_) {
         const double mu = (mu_max + mu_min) / 2.;
         poi_.val_ = mu;
         TH1D* h = model_.GeneratePDF(rnd_);
@@ -239,7 +268,7 @@ namespace FCSys {
       return (mu_min + mu_max) / 2.;
     }
 
-    //for a given PDF, construct the FC interval in N(observed)
+    //For a given PDF, construct the FC interval in N(observed)
     void CalculateIndividualInterval(TH1D* hPDF, int& nmin, int& nmax) {
       nmin = hPDF->GetNbinsX();
       nmax = 0;
@@ -274,13 +303,14 @@ namespace FCSys {
       if(verbose_ > 2) printf(" Final interval: %i - %i\n", nmin, nmax);
     }
 
+    //Get the upper or lower limit for the model given an observation
     double FindLimit(int nobs, bool upperLimit) {
       int attempts = 0;
       const int maxAttempts = 100;
       double mu_min = 0.;
       double mu_max = poi_.max_;
       double mu_range = poi_.max_ - poi_.min_;
-      while(abs((mu_max - mu_min) / mu_range) > 1.e-4 && attempts < maxAttempts) {
+      while(abs((mu_max - mu_min) / mu_range) > res_ && attempts < maxAttempts) {
         ++attempts;
         double mu = (mu_max + mu_min) / 2.;
         poi_.val_ = mu;
@@ -303,6 +333,7 @@ namespace FCSys {
       return (mu_max + mu_min) / 2.;
     }
 
+    //Calculate the interval for a given observation
     void CalculateInterval(int nobs, double& mu_min, double& mu_max) {
       //first test if mu = 0 is included in the interval
       if(nobs > null_max_) {
@@ -321,5 +352,6 @@ namespace FCSys {
     TH1D* hNull_;
     int null_min_;
     int null_max_;
+    double res_;
   };
 }

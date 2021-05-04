@@ -127,6 +127,7 @@ void Mu2e_model() {
 
   var_t nobs("Number observed", 0., 0., 10.);
   Poisson_t model("Counting model", nobs, {&dio, &rpc, &cr, &signal}, {&lumi_beta, &dio_beta, &rpc_beta, &cr_beta});
+  model.ngen_ = 1e5;
 
   cout << "Model:\n";
   model.Print();
@@ -176,6 +177,8 @@ void Mu2e_model() {
 
   cout << "Initializing Feldman-Cousins calculator\n";
   FCCalculator fc(model, sig_mu, *rnd_, 0.90/*, 3*/);
+  fc.res_ = 1.e-3;
+
   double mu_min, mu_max;
   int nseen;
   //get the median expected events for the null hypothesis PDF
