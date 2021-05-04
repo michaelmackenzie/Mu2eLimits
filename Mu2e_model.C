@@ -5,7 +5,7 @@ using namespace FCSys;
 TRandom3* rnd_ = new TRandom3(90);
 bool comparePDF_ = false; //make a plot comparing full random sample to semi-random sampling
 bool doConstraints_ = true; //use systematic uncertainties in limit calculation
-bool useLogNormal_ = true; //use log-normal systematic uncertainty PDFs
+bool useLogNormal_ = false; //use log-normal systematic uncertainty PDFs
 
 void Mu2e_model() {
 
@@ -164,19 +164,18 @@ void Mu2e_model() {
   FCCalculator fc(model, sig_mu, *rnd_, 0.90/*, 3*/);
   double mu_min, mu_max;
   int nseen;
-
   //get the median expected events for the null hypothesis PDF
-  nseen = 0;
-  double p = hpdf->GetBinContent(1);
-  while(p < 0.5) {
-    ++nseen;
-    p += hpdf->GetBinContent(nseen+1);
-  }
-
+  nseen = fc.GetMedian(hpdf);
   cout << "Performing Feldman-Cousins calculation for median nseen = " << nseen << endl;
   fc.CalculateInterval(nseen, mu_min, mu_max);
   printf("For %i seen, R_mue interval is: %.3e - %.3e (%.3f - %.3f mean events)\n",
          nseen, mu_min*ses/0.61, mu_max*ses/0.61,
          mu_min*sig_eff.nom_, mu_max*sig_eff.nom_);
 
+  //get median discovery information
+  int ndisc = fc.NSigmaThreshold(hpdf, 5.);
+  cout << "N(discovery) for NULL model = " << ndisc << endl;
+  double mu_disc = fc.FindForMedianN(ndisc);
+  printf("For a median of%i, minimum R_mue is: %.3e (%.3f mean events)\n",
+         ndisc, mu_disc*ses/0.61, mu_disc*sig_eff.nom_);
 }

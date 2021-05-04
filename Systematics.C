@@ -199,6 +199,46 @@ namespace FCSys {
       if(verbose_ > 0) printf("%s: Null interval at %.3f CL: %i - %i\n", __func__, cl, null_min_, null_max_);
     }
 
+    //Number of events needed to be seen to be >x sigma on the right tail
+    int NSigmaThreshold(TH1D* hPDF, double nsigma) {
+      if(nsigma < 0.) return 0; //ignore this region
+      //for numerical reasons, consider 1 - p(nsigma) --> 0 instead of p(nsigma) --> 1
+      const double psigma = ROOT::Math::gaussian_cdf(-nsigma);
+      double p = 1.;
+      int nbins = hPDF->GetNbinsX();
+      int n = -1;
+      while(p > psigma) {
+        ++n;
+        p = hPDF->Integral(n + 1, nbins);
+      }
+      return n;
+    }
+    int GetMedian(TH1D* hPDF) {
+      double p = 0.;
+      int n = -1;
+      while(p < 0.5) {
+        ++n;
+        p += hPDF->GetBinContent(n+1);
+      }
+      return n;
+    }
+
+    //find the minimum value of the POI that has a median of n
+    double FindForMedianN(int n) {
+      double mu_max = poi_.max_;
+      double mu_min = poi_.min_;
+      while(abs(mu_max - mu_min)/(mu_max+mu_min) > 1.e-4) {
+        const double mu = (mu_max + mu_min) / 2.;
+        poi_.val_ = mu;
+        TH1D* h = model_.GeneratePDF(rnd_);
+        int median = GetMedian(h);
+        if(median > n) mu_max = mu;
+        else           mu_min = mu;
+        delete h;
+      }
+      return (mu_min + mu_max) / 2.;
+    }
+
     //for a given PDF, construct the FC interval in N(observed)
     void CalculateIndividualInterval(TH1D* hPDF, int& nmin, int& nmax) {
       nmin = hPDF->GetNbinsX();
