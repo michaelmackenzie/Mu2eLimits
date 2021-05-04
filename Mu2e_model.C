@@ -22,6 +22,7 @@ void Mu2e_model() {
   const double cr_frac_unc = 0.2;
   const double lumi_frac_unc = 0.1;
   const double signal_acceptance = 0.3;
+  const double sig_frac_unc = 0.02;
   const double ses = 1./(scaleLuminosity_*3.77e19*1.59e-3*signal_acceptance); //for signal strength -> R_mue
 
   ///////////////////////////////////////////////////////
@@ -82,8 +83,18 @@ void Mu2e_model() {
 
   var_t sig_mu("Nominal signal strength", 0., 0., 10./signal_acceptance);
   var_t sig_eff("Signal efficiency", signal_acceptance);
+  var_t sig_unc("Signal uncertainty", sig_frac_unc);
+  var_t sig_beta("Signal beta", 0., -10., 10.);
+  var_t sig_var("Signal variation", 0., -1., 5.);
   var_t signal("Signal expectation", 0., 0., 20.);
-  signal.set_sys({&sig_mu}, {&sig_eff, &lumi});
+  if(useLogNormal_) {
+    sig_var.nom_ = 1.; sig_var.val_ = 1.;
+    sig_var.set_sys({&sig_unc}, {}, {&sig_beta});
+    signal.set_sys({&sig_mu}, {&sig_var, &sig_eff, &lumi});
+  } else {
+    sig_var.set_sys({&sig_unc}, {&sig_beta, &sig_mu});
+    signal.set_sys({&sig_mu, &sig_var}, {&sig_eff, &lumi});
+  }
 
   cout << "Nominal values:\n";
   lumi.print();
@@ -98,8 +109,10 @@ void Mu2e_model() {
   cr.print();
   cr_unc.print();
   cr_var.print();
-  signal.print();
   sig_eff.print();
+  sig_unc.print();
+  sig_var.print();
+  signal.print();
 
   if(!doConstraints_) {
     cout << "Setting systematics to 0!\n";

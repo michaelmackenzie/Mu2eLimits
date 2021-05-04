@@ -280,7 +280,7 @@ namespace FCSys {
       double mu_min = 0.;
       double mu_max = poi_.max_;
       double mu_range = poi_.max_ - poi_.min_;
-      while(abs((mu_max - mu_min) / mu_range) > 0.001 && attempts < maxAttempts) {
+      while(abs((mu_max - mu_min) / mu_range) > 1.e-4 && attempts < maxAttempts) {
         ++attempts;
         double mu = (mu_max + mu_min) / 2.;
         poi_.val_ = mu;
