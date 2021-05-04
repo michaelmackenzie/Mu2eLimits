@@ -5,7 +5,8 @@ using namespace FCSys;
 TRandom3* rnd_ = new TRandom3(90);
 bool comparePDF_ = false; //make a plot comparing full random sample to semi-random sampling
 bool doConstraints_ = true; //use systematic uncertainties in limit calculation
-bool useLogNormal_ = false; //use log-normal systematic uncertainty PDFs
+bool useLogNormal_ = true; //use log-normal systematic uncertainty PDFs
+double scaleLuminosity_ = 1.; //scale luminosity for testing purposes
 
 void Mu2e_model() {
 
@@ -30,7 +31,7 @@ void Mu2e_model() {
   var_t lumi_unc("Luminosity uncertainty", lumi_frac_unc);
   var_t lumi_beta("Luminosity beta", 0., -10., 10.);
   var_t lumi_var("Luminosity variation", 0., -1., 5.);
-  var_t lumi("Luminosity", 1., 0., 5.);
+  var_t lumi("Luminosity", (scaleLuminosity_ > 0.) ? scaleLuminosity_ : 1., 0., 5.);
   if(useLogNormal_) {
     lumi_var.nom_ = 1.; lumi_var.val_ = 1.;
     lumi_var.set_sys({&lumi_unc}, {}, {&lumi_beta}); //multiply (1 + uncertainty) ^ unit width gaussian to lumi prediction
@@ -176,6 +177,6 @@ void Mu2e_model() {
   int ndisc = fc.NSigmaThreshold(hpdf, 5.);
   cout << "N(discovery) for NULL model = " << ndisc << endl;
   double mu_disc = fc.FindForMedianN(ndisc);
-  printf("For a median of%i, minimum R_mue is: %.3e (%.3f mean events)\n",
+  printf("For a median of %i, minimum R_mue is: %.3e (%.3f mean events)\n",
          ndisc, mu_disc*ses/0.61, mu_disc*sig_eff.nom_);
 }
