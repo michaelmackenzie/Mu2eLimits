@@ -22,7 +22,7 @@ void Mu2e_model() {
   const double cr_frac_unc = 0.2;
   const double lumi_frac_unc = 0.1;
   const double signal_acceptance = 0.3;
-  const double ses = 1./(3.77e19*1.59e-3*signal_acceptance); //for signal strength -> R_mue
+  const double ses = 1./(scaleLuminosity_*3.77e19*1.59e-3*signal_acceptance); //for signal strength -> R_mue
 
   ///////////////////////////////////////////////////////
   // Initialize model parameters
@@ -171,12 +171,12 @@ void Mu2e_model() {
   fc.CalculateInterval(nseen, mu_min, mu_max);
   printf("For %i seen, R_mue interval is: %.3e - %.3e (%.3f - %.3f mean events)\n",
          nseen, mu_min*ses/0.61, mu_max*ses/0.61,
-         mu_min*sig_eff.nom_, mu_max*sig_eff.nom_);
+         mu_min*sig_eff.nom_*scaleLuminosity_, mu_max*sig_eff.nom_*scaleLuminosity_);
 
   //get median discovery information
   int ndisc = fc.NSigmaThreshold(hpdf, 5.);
   cout << "N(discovery) for NULL model = " << ndisc << endl;
   double mu_disc = fc.FindForMedianN(ndisc);
   printf("For a median of %i, minimum R_mue is: %.3e (%.3f mean events)\n",
-         ndisc, mu_disc*ses/0.61, mu_disc*sig_eff.nom_);
+         ndisc, mu_disc*ses/0.61, mu_disc*sig_eff.nom_*scaleLuminosity_);
 }
