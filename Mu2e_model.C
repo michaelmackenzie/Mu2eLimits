@@ -14,15 +14,23 @@ void Mu2e_model() {
   // Initialize experimental parameters
   ///////////////////////////////////////////////////////
 
-  const double dio_bkg = 0.02; //nominal expected background
-  const double dio_frac_unc = 0.10; //fractional uncertainty
-  const double rpc_bkg = 0.001;
-  const double rpc_frac_unc = 0.3;
-  const double cr_bkg = 0.02;
-  const double cr_frac_unc = 0.2;
+  //All in terms of nominal and fractional uncertainty on the nominal
+  const double dio_bkg = 0.0096; //see docdb-36476 Table 9
+  const double dio_frac_unc = 0.834; //using systematic upper estimate with statistical error
+  const double rpc_bkg = 7.06e-4; //see docdb-36503 section 11.2
+  const double rpc_frac_unc = 0.16; //using systematic upper estimate with statistical error
+  const double extinction = 1.; //in units of 10^-10, FIXME: Get expected value
+  const double rpc_oot_bkg = 13.9e-4*extinction; //see docdb-36503 section 11.3
+  const double rpc_oot_frac_unc = 0.12; //using systematic upper estimate with statistical error
+  const double pbar_bkg = 0.069 * 3.77e19/3.6e20; //see docdb-36494 eq 60
+  const double pbar_frac_unc = 1.; //100% uncertainty quoted - careful with Gaussian mode!
+  const double cr_lo_bkg = 0.03; //see docdb-38052 slide 20
+  const double cr_lo_frac_unc = 0.20;
+  const double cr_hi_bkg = 0.02; //see docdb-38052 slide 20
+  const double cr_hi_frac_unc = 0.50;
   const double lumi_frac_unc = 0.1;
-  const double signal_acceptance = 0.3;
-  const double sig_frac_unc = 0.02;
+  const double signal_acceptance = 0.1114; //see docdb-36491 Table 5
+  const double sig_frac_unc = 0.0715; //taken as the average of the momentum scale, but should be two-sided and correlated with DIO
   const double ses = 1./(scaleLuminosity_*3.77e19*1.59e-3*signal_acceptance); //for signal strength -> R_mue
 
   ///////////////////////////////////////////////////////
@@ -68,17 +76,56 @@ void Mu2e_model() {
     rpc.set_sys({&rpc_var}, {&lumi});
   }
 
-  var_t cr_unc("Cosmic-ray uncertainty", cr_bkg*cr_frac_unc);
-  var_t cr_beta("Cosmic-ray beta", 0., -10., 10.);
-  var_t cr_var("Cosmic-ray variation", 0., -1.*cr_bkg, 5.);
-  var_t cr("Cosmic-ray expectation", cr_bkg, 0., 5.);
+  var_t rpc_oot_unc("RPC OOT uncertainty", rpc_oot_bkg*rpc_oot_frac_unc);
+  var_t rpc_oot_beta("RPC OOT beta", 0., -10., 10.);
+  var_t rpc_oot_var("RPC OOT variation", 0., -1.*rpc_oot_bkg, 5.);
+  var_t rpc_oot("RPC OOT expectation", rpc_oot_bkg, 0., 5.);
   if(useLogNormal_) {
-    cr_var.nom_ = 1.; rpc_var.val_ = 1.;
-    cr_var.set_sys({&cr_unc}, {}, {&cr_beta});
-    cr.set_sys({}, {&cr_var});
+    rpc_oot_var.nom_ = 1.; rpc_oot_var.val_ = 1.;
+    rpc_oot_var.set_sys({&rpc_oot_unc}, {}, {&rpc_oot_beta});
+    rpc_oot.set_sys({}, {&rpc_oot_var, &lumi});
   } else {
-    cr_var.set_sys({&cr_unc}, {&cr_beta});
-    cr.set_sys({&cr_var}, {});
+    rpc_oot_var.set_sys({&rpc_oot_unc}, {&rpc_oot_beta});
+    rpc_oot.set_sys({&rpc_oot_var}, {&lumi});
+  }
+
+  var_t pbar_unc("Pbar uncertainty", pbar_bkg*pbar_frac_unc);
+  var_t pbar_beta("Pbar beta", 0., -10., 10.);
+  var_t pbar_var("Pbar variation", 0., -1.*pbar_bkg, 5.);
+  var_t pbar("Pbar expectation", pbar_bkg, 0., 5.);
+  if(useLogNormal_) {
+    pbar_var.nom_ = 1.; pbar_var.val_ = 1.;
+    pbar_var.set_sys({&pbar_unc}, {}, {&pbar_beta});
+    pbar.set_sys({}, {&pbar_var, &lumi});
+  } else {
+    pbar_var.set_sys({&pbar_unc}, {&pbar_beta});
+    pbar.set_sys({&pbar_var}, {&lumi});
+  }
+
+  var_t cr_lo_unc("Cosmic-ray (lo) uncertainty", cr_lo_bkg*cr_lo_frac_unc);
+  var_t cr_lo_beta("Cosmic-ray (lo) beta", 0., -10., 10.);
+  var_t cr_lo_var("Cosmic-ray (lo) variation", 0., -1.*cr_lo_bkg, 5.);
+  var_t cr_lo("Cosmic-ray (lo) expectation", cr_lo_bkg, 0., 5.);
+  if(useLogNormal_) {
+    cr_lo_var.nom_ = 1.; cr_lo_var.val_ = 1.;
+    cr_lo_var.set_sys({&cr_lo_unc}, {}, {&cr_lo_beta});
+    cr_lo.set_sys({}, {&cr_lo_var});
+  } else {
+    cr_lo_var.set_sys({&cr_lo_unc}, {&cr_lo_beta});
+    cr_lo.set_sys({&cr_lo_var}, {});
+  }
+
+  var_t cr_hi_unc("Cosmic-ray (hi) uncertainty", cr_hi_bkg*cr_hi_frac_unc);
+  var_t cr_hi_beta("Cosmic-ray (hi) beta", 0., -10., 10.);
+  var_t cr_hi_var("Cosmic-ray (hi) variation", 0., -1.*cr_hi_bkg, 5.);
+  var_t cr_hi("Cosmic-ray (hi) expectation", cr_hi_bkg, 0., 5.);
+  if(useLogNormal_) {
+    cr_hi_var.nom_ = 1.; cr_hi_var.val_ = 1.;
+    cr_hi_var.set_sys({&cr_hi_unc}, {}, {&cr_hi_beta});
+    cr_hi.set_sys({}, {&cr_hi_var});
+  } else {
+    cr_hi_var.set_sys({&cr_hi_unc}, {&cr_hi_beta});
+    cr_hi.set_sys({&cr_hi_var}, {});
   }
 
   var_t sig_mu("Nominal signal strength", 0., 0., 10./signal_acceptance);
@@ -106,9 +153,18 @@ void Mu2e_model() {
   rpc.print();
   rpc_unc.print();
   rpc_var.print();
-  cr.print();
-  cr_unc.print();
-  cr_var.print();
+  rpc_oot.print();
+  rpc_oot_unc.print();
+  rpc_oot_var.print();
+  pbar.print();
+  pbar_unc.print();
+  pbar_var.print();
+  cr_lo.print();
+  cr_lo_unc.print();
+  cr_lo_var.print();
+  cr_hi.print();
+  cr_hi_unc.print();
+  cr_hi_var.print();
   sig_eff.print();
   sig_unc.print();
   sig_var.print();
@@ -119,14 +175,20 @@ void Mu2e_model() {
     lumi_beta.set_constant();
     dio_beta.set_constant();
     rpc_beta.set_constant();
-    cr_beta.set_constant();
+    rpc_oot_beta.set_constant();
+    pbar_beta.set_constant();
+    cr_lo_beta.set_constant();
+    cr_hi_beta.set_constant();
   }
   ///////////////////////////////////////////////////////
   // Initialize model
   ///////////////////////////////////////////////////////
 
   var_t nobs("Number observed", 0., 0., 20.);
-  Poisson_t model("Counting model", nobs, {&dio, &rpc, &cr, &signal}, {&lumi_beta, &dio_beta, &rpc_beta, &cr_beta});
+  Poisson_t model("Counting model", nobs,
+                 {&dio     , &rpc     , &rpc_oot     , &pbar     , &cr_lo     , &cr_hi     , &signal},
+                 {&dio_beta, &rpc_beta, &rpc_oot_beta, &pbar_beta, &cr_lo_beta, &cr_hi_beta, &sig_beta, &lumi_beta}
+                 );
   model.ngen_ = 1e5;
 
   cout << "Model:\n";
