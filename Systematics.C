@@ -1,4 +1,4 @@
-//a variable, knows about its bounds, nominal value, additive (applied first) variables, and multiplicative (applied second) variables
+//a variable, knows about its bounds, nominal value, additive (applied first) variables, multiplicative (second), and power (third) variables
 namespace FCSys {
   class var_t {
   public:
@@ -11,9 +11,10 @@ namespace FCSys {
       constant_ = constant;
     }
 
-    void set_sys(std::vector<var_t*> add, std::vector<var_t*> mul) {
+    void set_sys(std::vector<var_t*> add, std::vector<var_t*> mul, std::vector<var_t*> pow = {}) {
       add_ = add;
       mul_ = mul;
+      pow_ = pow;
     }
 
     void set_val(double val) {
@@ -37,6 +38,10 @@ namespace FCSys {
       for(var_t* var : mul_) {
         val *= var->get_val();
         if(verbose_ > 2) printf("Variable %s mul %s = %.3e --> %.3e\n", name_.Data(), var->name_.Data(), var->get_val(), val);
+      }
+      for(var_t* var : pow_) {
+        val = std::pow(val, var->get_val());
+        if(verbose_ > 2) printf("Variable %s pow %s = %.3e --> %.3e\n", name_.Data(), var->name_.Data(), var->get_val(), val);
       }
       if(val > max_ || val < min_) {
         if(verbose_ > 0) std::cout << "Variable " << name_.Data() << " value outside of bounds! Returning bound...\n";
@@ -63,6 +68,14 @@ namespace FCSys {
         }
         printf("}");
       }
+      if(pow_.size() > 0) {
+        printf(" pow = {");
+        for(var_t* var : pow_) {
+          printf("%s", var->name_.Data());
+          if(var != pow_[pow_.size()-1]) printf(", ");
+        }
+        printf("}");
+      }
       printf("\n");
     }
 
@@ -76,6 +89,7 @@ namespace FCSys {
     int verbose_;
     std::vector<var_t*> add_;
     std::vector<var_t*> mul_;
+    std::vector<var_t*> pow_;
   };
 
   //class for a Poission PDF with systematics

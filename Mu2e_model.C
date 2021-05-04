@@ -4,7 +4,8 @@ using namespace FCSys;
 
 TRandom3* rnd_ = new TRandom3(90);
 bool comparePDF_ = false; //make a plot comparing full random sample to semi-random sampling
-bool doConstraints_ = true;
+bool doConstraints_ = true; //use systematic uncertainties in limit calculation
+bool useLogNormal_ = true; //use log-normal systematic uncertainty PDFs
 
 void Mu2e_model() {
 
@@ -29,30 +30,54 @@ void Mu2e_model() {
   var_t lumi_unc("Luminosity uncertainty", lumi_frac_unc);
   var_t lumi_beta("Luminosity beta", 0., -10., 10.);
   var_t lumi_var("Luminosity variation", 0., -1., 5.);
-  lumi_var.set_sys({&lumi_unc}, {&lumi_beta});
   var_t lumi("Luminosity", 1., 0., 5.);
-  lumi.set_sys({&lumi_var}, {});
+  if(useLogNormal_) {
+    lumi_var.nom_ = 1.; lumi_var.val_ = 1.;
+    lumi_var.set_sys({&lumi_unc}, {}, {&lumi_beta}); //multiply (1 + uncertainty) ^ unit width gaussian to lumi prediction
+    lumi.set_sys({}, {&lumi_var});
+  } else {
+    lumi_var.set_sys({&lumi_unc}, {&lumi_beta}); //add uncertainty * unit width gaussian to lumi prediction
+    lumi.set_sys({&lumi_var}, {});
+  }
 
   var_t dio_unc("DIO uncertainty", dio_bkg*dio_frac_unc);
   var_t dio_beta("DIO beta", 0., -10., 10.);
   var_t dio_var("DIO variation", 0., -1.*dio_bkg, 5.);
-  dio_var.set_sys({&dio_unc}, {&dio_beta});
   var_t dio("DIO expectation", dio_bkg, 0., 5.);
-  dio.set_sys({&dio_var}, {&lumi});
+  if(useLogNormal_) {
+    dio_var.nom_ = 1.; dio_var.val_ = 1.;
+    dio_var.set_sys({&dio_unc}, {}, {&dio_beta});
+    dio.set_sys({}, {&dio_var, &lumi});
+  } else {
+    dio_var.set_sys({&dio_unc}, {&dio_beta});
+    dio.set_sys({&dio_var}, {&lumi});
+  }
 
   var_t rpc_unc("RPC uncertainty", rpc_bkg*rpc_frac_unc);
   var_t rpc_beta("RPC beta", 0., -10., 10.);
   var_t rpc_var("RPC variation", 0., -1.*rpc_bkg, 5.);
-  rpc_var.set_sys({&rpc_unc}, {&rpc_beta});
   var_t rpc("RPC expectation", rpc_bkg, 0., 5.);
-  rpc.set_sys({&rpc_var}, {&lumi});
+  if(useLogNormal_) {
+    rpc_var.nom_ = 1.; rpc_var.val_ = 1.;
+    rpc_var.set_sys({&rpc_unc}, {}, {&rpc_beta});
+    rpc.set_sys({}, {&rpc_var, &lumi});
+  } else {
+    rpc_var.set_sys({&rpc_unc}, {&rpc_beta});
+    rpc.set_sys({&rpc_var}, {&lumi});
+  }
 
   var_t cr_unc("Cosmic-ray uncertainty", cr_bkg*cr_frac_unc);
   var_t cr_beta("Cosmic-ray beta", 0., -10., 10.);
   var_t cr_var("Cosmic-ray variation", 0., -1.*cr_bkg, 5.);
-  cr_var.set_sys({&cr_unc}, {&cr_beta});
   var_t cr("Cosmic-ray expectation", cr_bkg, 0., 5.);
-  cr.set_sys({&cr_var}, {});
+  if(useLogNormal_) {
+    cr_var.nom_ = 1.; rpc_var.val_ = 1.;
+    cr_var.set_sys({&cr_unc}, {}, {&cr_beta});
+    cr.set_sys({}, {&cr_var});
+  } else {
+    cr_var.set_sys({&cr_unc}, {&cr_beta});
+    cr.set_sys({&cr_var}, {});
+  }
 
   var_t sig_mu("Nominal signal strength", 0., 0., 10./signal_acceptance);
   var_t sig_eff("Signal efficiency", signal_acceptance);
