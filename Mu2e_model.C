@@ -125,7 +125,7 @@ void Mu2e_model() {
   // Initialize model
   ///////////////////////////////////////////////////////
 
-  var_t nobs("Number observed", 0., 0., 10.);
+  var_t nobs("Number observed", 0., 0., 20.);
   Poisson_t model("Counting model", nobs, {&dio, &rpc, &cr, &signal}, {&lumi_beta, &dio_beta, &rpc_beta, &cr_beta});
   model.ngen_ = 1e5;
 

@@ -115,7 +115,7 @@ namespace FCSys {
   public:
 
     Poisson_t(TString name, var_t& obs, std::vector<var_t*> mu, std::vector<var_t*> sys = {}) :
-      name_(name), obs_(obs), mu_(mu), sys_(sys), verbose_(0), ngen_(1e5) {}
+      name_(name), obs_(obs), mu_(mu), sys_(sys), verbose_(0), ngen_(1e5), nmax_((int) obs.max_) {}
 
     void SetVerbose(int verbose) {
       verbose_ = verbose;
@@ -170,7 +170,7 @@ namespace FCSys {
 
     TH1D* GeneratePDF(TRandom3& rnd) {
       //sample the nuisance parameters to define a mean, then add a poisson PDF for this
-      int nbins = 100;
+      int nbins = nmax_;
       TH1D* hpdf = new TH1D("hpdf", "PDF", nbins, 0., (double) nbins);
       const int nattempts = ngen_;
       for(int attempt = 0; attempt < nattempts; ++attempt) {
@@ -204,6 +204,7 @@ namespace FCSys {
     std::vector<var_t*> sys_;
     int verbose_;
     int ngen_;
+    int nmax_;
   };
 
   //////////////////////////////////////////////////////////////
