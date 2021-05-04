@@ -191,7 +191,7 @@ namespace FCSys {
       nmax = 0;
       double p = 0.;
       //mu_bkg for the denominator of the likelihood ratio ordering parameter
-      const double mu = hNull_->GetMean();
+      const double mu = hNull_->GetMean() - 0.5; //bins are centered at n + 0.5
       if(hPDF->Integral() < cl_) {
         printf("!!! %s: PDF doesn't have the range to calculate the confidence level precision!\n", __func__);
         nmax = nmin;

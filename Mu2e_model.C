@@ -14,6 +14,8 @@ void Mu2e_model() {
 
   const double dio_bkg = 0.02; //nominal expected background
   const double dio_frac_unc = 0.10; //fractional uncertainty
+  const double rpc_bkg = 0.001;
+  const double rpc_frac_unc = 0.3;
   const double cr_bkg = 0.02;
   const double cr_frac_unc = 0.2;
   const double lumi_frac_unc = 0.1;
@@ -38,6 +40,13 @@ void Mu2e_model() {
   var_t dio("DIO expectation", dio_bkg, 0., 5.);
   dio.set_sys({&dio_var}, {&lumi});
 
+  var_t rpc_unc("RPC uncertainty", rpc_bkg*rpc_frac_unc);
+  var_t rpc_beta("RPC beta", 0., -10., 10.);
+  var_t rpc_var("RPC variation", 0., -1.*rpc_bkg, 5.);
+  rpc_var.set_sys({&rpc_unc}, {&rpc_beta});
+  var_t rpc("RPC expectation", rpc_bkg, 0., 5.);
+  rpc.set_sys({&rpc_var}, {&lumi});
+
   var_t cr_unc("Cosmic-ray uncertainty", cr_bkg*cr_frac_unc);
   var_t cr_beta("Cosmic-ray beta", 0., -10., 10.);
   var_t cr_var("Cosmic-ray variation", 0., -1.*cr_bkg, 5.);
@@ -55,23 +64,30 @@ void Mu2e_model() {
   lumi_unc.print();
   lumi_var.print();
   dio.print();
-  // dio.verbose_ = 10;
-  dio.get_val();
-  // dio.verbose_ = 0;
   dio_unc.print();
   dio_var.print();
+  rpc.print();
+  rpc_unc.print();
+  rpc_var.print();
   cr.print();
   cr_unc.print();
   cr_var.print();
   signal.print();
   sig_eff.print();
 
+  if(!doConstraints_) {
+    cout << "Setting systematics to 0!\n";
+    lumi_beta.set_constant();
+    dio_beta.set_constant();
+    rpc_beta.set_constant();
+    cr_beta.set_constant();
+  }
   ///////////////////////////////////////////////////////
   // Initialize model
   ///////////////////////////////////////////////////////
 
   var_t nobs("Number observed", 0., 0., 10.);
-  Poisson_t model("Counting model", nobs, {&dio, &cr, &signal}, {&lumi_beta, &dio_beta, &cr_beta});
+  Poisson_t model("Counting model", nobs, {&dio, &rpc, &cr, &signal}, {&lumi_beta, &dio_beta, &rpc_beta, &cr_beta});
 
   cout << "Model:\n";
   model.Print();
