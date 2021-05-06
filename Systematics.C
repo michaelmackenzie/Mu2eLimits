@@ -244,8 +244,6 @@ namespace FCSys {
         p = hPDF->Integral(n + 1, nbins);
         if(verbose_ > 1) printf(" n = %2i P(n' >= n) = %.3e\n", n, p);
       }
-      //FIXME: Check value of n
-      // n -= 1;
       return n;
     }
 
@@ -269,8 +267,8 @@ namespace FCSys {
         poi_.val_ = mu;
         TH1D* h = model_.GeneratePDF(rnd_);
         int median = GetMedian(h);
-        if(median > n) mu_max = mu;
-        else           mu_min = mu;
+        if(median >= n) mu_max = mu; //mu satisfies criteria, so set as maximum
+        else            mu_min = mu; //mu fails, so must be larger
         delete h;
       }
       return (mu_min + mu_max) / 2.;
