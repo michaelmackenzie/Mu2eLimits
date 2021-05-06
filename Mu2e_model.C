@@ -14,24 +14,29 @@ void Mu2e_model() {
   // Initialize experimental parameters
   ///////////////////////////////////////////////////////
 
+  //optimization output
+  //    pmin      pmax      tmin      tmax   Cosmics       DIO       PbarTOT        RPC       Total       Signal        s5         SES        Rmue
+  // ---------------------------------------------------------------------------------------------------------------------------------------------------------------
+  //   103.650   104.950   640.000  1680.000 3.88816e-02 3.21667e-02 1.09621e-02 1.13566e-02 9.33671e-02 4.56976e-01 4.72510e+00 2.18830e-16 1.03399e-15
+
   //All in terms of nominal and fractional uncertainty on the nominal
-  const double dio_bkg = 0.0096; //see docdb-36476 Table 9
+  const double dio_bkg = 3.21667e-2; //0.0096; //see docdb-36476 Table 9
   const double dio_frac_unc = 0.834; //using systematic upper estimate with statistical error
-  const double rpc_bkg = 7.06e-4; //see docdb-36503 section 11.2
+  const double rpc_bkg = 1.13566e-2; //7.06e-4; //see docdb-36503 section 11.2
   const double rpc_frac_unc = 0.16; //using systematic upper estimate with statistical error
   const double extinction = 1.; //in units of 10^-10, FIXME: Get expected value
-  const double rpc_oot_bkg = 13.9e-4*extinction; //see docdb-36503 section 11.3
+  const double rpc_oot_bkg = 14.5e-4*extinction; //13.9e-4*extinction; //see docdb-36503 section 11.3, scaled 13.9 by (tmax - tmin) / (1695 - 700)
   const double rpc_oot_frac_unc = 0.12; //using systematic upper estimate with statistical error
-  const double pbar_bkg = 0.069 * 3.77e19/3.6e20; //see docdb-36494 eq 60
+  const double pbar_bkg = 1.09621e-2; //0.069 * 3.77e19/3.6e20; //see docdb-36494 eq 60
   const double pbar_frac_unc = 1.; //100% uncertainty quoted - careful with Gaussian mode!
-  const double cr_lo_bkg = 0.03; //see docdb-38052 slide 20
+  const double cr_lo_bkg = 3.88816e-02;//0.03; //see docdb-38052 slide 20
   const double cr_lo_frac_unc = 0.20;
-  const double cr_hi_bkg = 0.02; //see docdb-38052 slide 20
+  const double cr_hi_bkg = 0.; //0.02; //see docdb-38052 slide 20: COMBINED INTO CRV_LO FOR NOW
   const double cr_hi_frac_unc = 0.50;
   const double lumi_frac_unc = 0.1;
-  const double signal_acceptance = 0.1114; //see docdb-36491 Table 5
+  const double signal_acceptance = 0.1252; //0.1114; //see docdb-36491 Table 5
   const double sig_frac_unc = 0.0715; //taken as the average of the momentum scale, but should be two-sided and correlated with DIO
-  const double ses = 1./(scaleLuminosity_*3.77e19*1.59e-3*0.609); //for signal strength -> R_mue
+  const double ses = 1./(scaleLuminosity_*3.77e19*1.59e-3*0.609); //for signal strength -> R_mue, SES if acceptance was 100%
 
   ///////////////////////////////////////////////////////
   // Initialize model parameters
@@ -179,6 +184,7 @@ void Mu2e_model() {
     pbar_beta.set_constant();
     cr_lo_beta.set_constant();
     cr_hi_beta.set_constant();
+    sig_beta.set_constant();
   }
   ///////////////////////////////////////////////////////
   // Initialize model
@@ -189,15 +195,15 @@ void Mu2e_model() {
                  {&dio     , &rpc     , &rpc_oot     , &pbar     , &cr_lo     , &cr_hi     , &signal},
                  {&dio_beta, &rpc_beta, &rpc_oot_beta, &pbar_beta, &cr_lo_beta, &cr_hi_beta, &sig_beta, &lumi_beta}
                  );
-  model.ngen_ = 1e5;
+  model.ngen_ = (doConstraints_) ? 1e5 : 1; //without constraints, it's just a Poisson PDF, no random shifting
 
   cout << "Model:\n";
   model.Print();
-  cout << "Poisson model has a nominal mean of: " << model.GetNominalMean() << endl;
-
   cout << "Generating the NULL observable PDF\n";
   TH1D* hpdf = model.GeneratePDF(*rnd_);
   hpdf->SetName("null");
+  cout << "Poisson model has a nominal mean of: " << model.GetNominalMean()
+       << " and NULL PDF has a mean of: " << (hpdf->GetMean()) << endl;
   TCanvas* c = new TCanvas();
   hpdf->SetLineColor(kRed);
   hpdf->SetLineWidth(2);
@@ -229,7 +235,7 @@ void Mu2e_model() {
       hexp->Fill(n);
     }
     hexp->Scale(1./nentries);
-    hexp->Draw("hist E1 sames");
+    hexp->Draw("hist sames");
     hexp->SetLineWidth(2);
   }
 
@@ -238,8 +244,8 @@ void Mu2e_model() {
   ///////////////////////////////////////////////////////
 
   cout << "Initializing Feldman-Cousins calculator\n";
-  FCCalculator fc(model, sig_mu, *rnd_, 0.90/*, 3*/);
-  fc.res_ = 1.e-3;
+  FCCalculator fc(model, sig_mu, *rnd_, 0.90/*confidence level*/, 0/*verbosity*/);
+  fc.res_ = 1.e-3; //roughly control the resolution of the calculation, as a fraction of POI range
 
   double mu_min, mu_max;
   int nseen;

@@ -178,6 +178,7 @@ namespace FCSys {
         const double mu = GetMean();
         for(int n = 0; n < nbins; ++n) {
           hpdf->Fill(n, ROOT::Math::poisson_pdf(n, mu));
+          if(nattempts == 1) hpdf->SetBinError(n+1, 0.);
         }
       }
       hpdf->Scale(1. / nattempts);
@@ -219,6 +220,8 @@ namespace FCSys {
       poi.val_ = 0.;
       hNull_ = model.GeneratePDF(rnd);
       hNull_->SetName("FC_NULL");
+      null_mu_ = hNull_->GetMean();
+      if(verbose > 0) printf("%s: Null mean is %.3e events\n", __func__, null_mu_);
       poi.val_ = oldval;
       CalculateIndividualInterval(hNull_, null_min_, null_max_);
       if(null_min_ > 0) {
@@ -235,10 +238,14 @@ namespace FCSys {
       double p = 1.;
       int nbins = hPDF->GetNbinsX();
       int n = -1;
+      if(verbose_ > 1) printf("%s: Printing threshold calculation:\n", __func__);
       while(p > psigma) {
         ++n;
         p = hPDF->Integral(n + 1, nbins);
+        if(verbose_ > 1) printf(" n = %2i P(n' >= n) = %.3e\n", n, p);
       }
+      //FIXME: Check value of n
+      // n -= 1;
       return n;
     }
 
@@ -275,7 +282,7 @@ namespace FCSys {
       nmax = 0;
       double p = 0.;
       //mu_bkg for the denominator of the likelihood ratio ordering parameter
-      const double mu = hNull_->GetMean() - 0.5; //bins are centered at n + 0.5
+      const double mu = null_mu_;//hNull_->GetMean() - 0.5; //bins are centered at n + 0.5
       if(hPDF->Integral() < cl_) {
         printf("!!! %s: PDF doesn't have the range to calculate the confidence level precision!\n", __func__);
         nmax = nmin;
@@ -351,6 +358,7 @@ namespace FCSys {
     double cl_;
     int verbose_;
     TH1D* hNull_;
+    double null_mu_;
     int null_min_;
     int null_max_;
     double res_;
